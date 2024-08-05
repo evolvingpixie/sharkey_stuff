@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sharkeysocial
+  namespace: sharkeysocial
+spec:
+  rules:
+  - host: thetransagenda.gay
+    http:
+      paths:
+      - path: /inbox
+        pathType: Prefix
+        backend:
+          service:
+            name: sharkeysocial-federation
+            port:
+              number: 3000
+      - path: /users
+        pathType: Prefix
+        backend:
+          service:
+            name: sharkeysocial-federation
+            port:
+              number: 3000
+      - path: /notes
+        pathType: Prefix
+        backend:
+          service:
+            name: sharkeysocial-federation
+            port:
+              number: 3000
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: sharkeysocial
+            port:
+              number: 3000
+
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sharkeysocial
+            port:
+              number: 3000
+  tls:
+  - secretName: transagenda-tls

@@ -1,0 +1,63 @@
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sharkeysocial-worker
+  namespace: sharkeysocial
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 33%
+      maxUnavailable: 33%
+  selector:
+    matchLabels:
+      app: sharkeysocial-worker
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: sharkeysocial-worker
+        env: prod
+        sharkey: worker
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - sharkeysocial-worker
+              topologyKey: "kubernetes.io/hostname"      
+      imagePullSecrets:
+       - name: regcred
+      containers:
+      - image: registry.activitypub.software/transfem-org/sharkey:latest
+        name: sharkey
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: sharkey
+        volumeMounts:
+        - name: sharkeysocial-configmap
+          mountPath: /sharkey/.config
+        env:
+          - name: TZ
+            value: America/New_York
+          - name: MK_ONLY_QUEUE
+            value: "true"
+        resources:
+          requests:
+            memory: "1024Mi"
+            cpu: "200m"
+          limits:
+            memory: "2048Mi"
+            cpu: "1000m"
+      volumes:
+      - name: sharkeysocial-configmap
+        configMap:
+          name: sharkeysocial
+

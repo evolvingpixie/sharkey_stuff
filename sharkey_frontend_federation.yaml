@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sharkeysocial-federation
+  namespace: sharkeysocial
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: sharkeysocial
+  selector:
+    app: sharkeysocial-federation
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sharkeysocial-federation
+  namespace: sharkeysocial
+spec:
+  selector:
+    matchLabels:
+      app: sharkeysocial-federation
+  strategy:
+    rollingUpdate:
+      maxSurge: 33%
+      maxUnavailable: 33%
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sharkeysocial-federation
+        env: prod
+        sharkey: federation
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - sharkeysocial-federation
+              topologyKey: "kubernetes.io/hostname"
+      imagePullSecrets:
+       - name: regcred
+      containers:
+      - image: registry.activitypub.software/transfem-org/sharkey:latest
+        resources:
+          requests:
+            memory: "1024Mi"
+            cpu: "200m"
+          limits:
+            memory: "2048Mi"
+        name: sharkeysocial-federation
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: sharkeysocial
+        startupProbe:
+          httpGet:
+            path: /api/server-info
+            port: sharkeysocial
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 24
+        readinessProbe:
+          httpGet:
+            path: /api/server-info
+            port: sharkeysocial
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 1
+        livenessProbe:
+          httpGet:
+            path: /api/server-info
+            port: sharkeysocial
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 12
+        volumeMounts:
+        - name: sharkeysocial-configmap
+          mountPath: /sharkey/.config
+        env:
+          - name: TZ
+            value: America/New_York
+          - name: MK_ONLY_SERVER
+            value: "true"
+          - name: MK_WITH_LOG_TIME
+            value: "true"            
+      volumes:
+      - name: sharkeysocial-configmap
+        configMap:
+          name: sharkeysocial 
+---
